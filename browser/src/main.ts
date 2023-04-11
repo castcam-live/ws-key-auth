@@ -67,9 +67,16 @@ async function connecting(address: string) {
 
 	const ws = new WebSocket(address);
 
-	await connect(ws, clientId, (data) => {
-		return sign(data, keyPair);
-	});
+	await Promise.race([
+		new Promise((_, reject) => {
+			ws.addEventListener("error", () => {
+				reject();
+			});
+		}),
+		connect(ws, clientId, (data) => {
+			return sign(data, keyPair);
+		}),
+	]);
 
 	return ws;
 }
@@ -77,21 +84,20 @@ async function connecting(address: string) {
 async function done(ws: WebSocket) {
 	a.innerHTML = `
 		<p>Connected</p>
-		<div><textarea id='input'></textarea></div>
+		<div><textarea id='input'></textarea><button id="submit">Submit</button></div>
 
 		<div id="output">
 
 		</div>
 	`;
 
-	const input = document.getElementById("input");
+	const input = document.getElementById("input") as HTMLTextAreaElement;
+	const submit = document.getElementById("submit");
 	if (!input) throw new Error("DOM error");
+	if (!submit) throw new Error("DOM error");
 
-	input.addEventListener("keydown", (e) => {
-		if (e.key === "Enter") {
-			const data = (input as HTMLTextAreaElement).value;
-			ws.send(data);
-		}
+	submit.addEventListener("click", (e) => {
+		ws.send(input.value);
 	});
 
 	ws.addEventListener("message", (e) => {
@@ -104,8 +110,13 @@ async function done(ws: WebSocket) {
 
 async function run() {
 	const address = await websocketAddress();
-	const ws = await connecting(address);
-	done(ws);
+	try {
+		const ws = await connecting(address);
+		if (!ws) throw new Error("Failed to connect");
+		done(ws);
+	} catch {
+		a.innerHTML = "Failed to connect";
+	}
 }
 
 run().catch(console.error);

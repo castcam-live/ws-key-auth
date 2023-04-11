@@ -162,12 +162,13 @@ export async function connect(
 						case "SIGNATURE_MATCHES":
 							removeListener();
 							resolve();
+							break;
 						case "SIGNATURE_MISMATCH":
 							close(new Error("Signature mismatch"));
 							break;
 						default:
 							close(new Error("Unexpected message"));
-							return;
+							break;
 					}
 					break;
 			}
