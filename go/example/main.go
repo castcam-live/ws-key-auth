@@ -37,7 +37,14 @@ func main() {
 				break
 			}
 			log.Printf("recv: %s", message)
+
+			err = conn.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
+				log.Println("write:", err)
+				break
+			}
 		}
 	})
+	log.Println("Listening on :8080")
 	log.Fatal(http.ListenAndServe(":8080", router))
 }

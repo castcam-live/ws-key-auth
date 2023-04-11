@@ -89,6 +89,9 @@ func getChallengePayload() (b []byte, err error) {
 	return b, nil
 }
 
+// Handshake will perform the handshake with the client and return true if the
+// client is authenticated and false if not. If an error is returned, the
+// connection should be closed.
 func Handshake(conn *websocket.Conn) (bool, error) {
 	var td TypeData
 	err := conn.ReadJSON(&td)
