@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -188,7 +189,10 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 		return false, nil
 	}
 
-	var challengeResponse string
+	var challengeResponse struct {
+		Signature string `json:"signature"`
+		Hash      string `json:"hash"`
+	}
 	err = json.Unmarshal(td.Data, &challengeResponse)
 	if err != nil {
 		conn.WriteJSON(map[string]any{
@@ -201,7 +205,15 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 		return false, err
 	}
 
-	decodedChallengeResponse, err := base64.StdEncoding.DecodeString(challengeResponse)
+	if challengeResponse.Hash != "SHA-256" {
+		conn.WriteJSON(map[string]string{
+			"type": "UNSUPPORTED_HASH",
+			"data": "Got hash of type " + challengeResponse.Hash + ", but the only supported hash currently is SHA-256 (more coming soon!)",
+		})
+		return false, nil
+	}
+
+	decodedChallengeResponse, err := base64.StdEncoding.DecodeString(challengeResponse.Signature)
 	if err != nil {
 		conn.WriteJSON(map[string]any{
 			"type": "CLIENT_ERROR",
@@ -227,7 +239,9 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 	r.SetBytes(decodedChallengeResponse[:32])
 	s.SetBytes(decodedChallengeResponse[32:])
 
-	if !ecdsa.Verify(pubKey, payload, r, s) {
+	hashedPayload := sha256.Sum256(payload)
+
+	if !ecdsa.Verify(pubKey, hashedPayload[:], r, s) {
 		conn.WriteJSON(map[string]string{
 			"type": "SIGNATURE_MISMATCH",
 		})

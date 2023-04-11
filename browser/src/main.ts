@@ -45,12 +45,16 @@ async function getClientId(keyPair: CryptoKeyPair) {
 	return `WebCrypto-raw.EC.${(algo as any).namedCurve}$${encodedRaw}`;
 }
 
-function sign(data: ArrayBuffer, keyPair: CryptoKeyPair): Promise<ArrayBuffer> {
-	return crypto.subtle.sign(
+async function sign(
+	data: ArrayBuffer,
+	keyPair: CryptoKeyPair
+): Promise<ArrayBuffer> {
+	const signature = await crypto.subtle.sign(
 		{ name: "ECDSA", hash: "SHA-256" },
 		keyPair.privateKey,
 		data
 	);
+	return signature;
 }
 
 async function connecting(address: string) {

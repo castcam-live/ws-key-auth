@@ -133,7 +133,10 @@ export async function connect(
 									ws.send(
 										JSON.stringify({
 											type: "CHALLENGE_RESPONSE",
-											data: encodeBase64(signature),
+											data: {
+												signature: encodeBase64(signature),
+												hash: "SHA-256",
+											},
 										})
 									);
 									console.log("Sent challenge response");
