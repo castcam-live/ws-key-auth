@@ -13,7 +13,9 @@ import (
 func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		upgrader := websocket.Upgrader{}
+		upgrader := websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool { return true },
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println(err)
@@ -24,6 +26,7 @@ func main() {
 		authenticated, err := wskeyauth.Handshake(conn)
 
 		if !authenticated || err != nil {
+			log.Println(err)
 			log.Println("Failed to authenticate")
 			return
 		}

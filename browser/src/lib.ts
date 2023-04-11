@@ -124,17 +124,19 @@ export async function connect(
 			const data = JSON.parse(event.data);
 			switch (currentState) {
 				case "CONNECTING":
+					console.log("In connecting", data);
 					switch (data.type) {
 						case "CHALLENGE":
 							// This is where we sign the challenge payload, and send it off
 							sign(decodeBase64(data.data))
-								.then(() => {
+								.then((signature) => {
 									ws.send(
 										JSON.stringify({
 											type: "CHALLENGE_RESPONSE",
-											data: encodeBase64(decodeBase64(data.data)),
+											data: encodeBase64(signature),
 										})
 									);
+									console.log("Sent challenge response");
 									currentState = "SENT_CHALLENGE";
 								})
 								.catch((e) => {
@@ -143,21 +145,28 @@ export async function connect(
 							break;
 						default:
 							// This is where we got a message we didn't expect
-							close(new Error("Unexpected message"));
-							return;
+							close(
+								new Error(
+									`Unexpected message. Connection state: ${currentState}}`
+								)
+							);
+							break;
 					}
+					break;
 				case "SENT_CHALLENGE":
+					console.log("In sent challenge", data);
 					switch (data.type) {
 						case "SIGNATURE_MATCHES":
 							removeListener();
 							resolve();
 						case "SIGNATURE_MISMATCH":
 							close(new Error("Signature mismatch"));
-							return;
+							break;
 						default:
 							close(new Error("Unexpected message"));
 							return;
 					}
+					break;
 			}
 		};
 		ws.addEventListener("message", listener);

@@ -7,7 +7,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/big"
+	"strconv"
 	"strings"
 
 	"github.com/gorilla/websocket"
@@ -39,13 +41,13 @@ func ErrFailedToReadRandomNumbers() error {
 }
 
 func parseClientID(clientID string) (*ecdsa.PublicKey, error) {
-	s := strings.Split("$", clientID)
+	s := strings.Split(clientID, "$")
 	if len(s) != 2 {
-		return nil, ErrInvalidClientID()
+		return nil, fmt.Errorf("expected client ID to have exactly one $. The client ID: %s", clientID)
 	}
 
 	if s[0] != "WebCrypto-raw.EC.P-256" {
-		return nil, ErrInvalidClientID()
+		return nil, fmt.Errorf("expected client ID to have prefix WebCrypto-raw.EC.P-256. The client ID: %s", clientID)
 	}
 
 	buff, err := base64.StdEncoding.DecodeString(s[1])
@@ -54,11 +56,11 @@ func parseClientID(clientID string) (*ecdsa.PublicKey, error) {
 	}
 
 	if len(buff) != 65 {
-		return nil, ErrInvalidClientID()
+		return nil, errors.New("expected P-256 key of ID to be 65 bytes long")
 	}
 
 	if buff[0] != 4 {
-		return nil, ErrInvalidClientID()
+		return nil, errors.New("expected P-256 key of ID to have 0x04 as the first byte")
 	}
 
 	x := &big.Int{}
@@ -99,23 +101,47 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 		return false, err
 	}
 
-	if td.Type != "CLIENT" {
+	if td.Type != "CLIENT_ID" {
+		conn.WriteJSON(map[string]string{
+			"type": "CLIENT_ERROR",
+			"data": "Expected a CLIENT_ID event, but got " + td.Type + "",
+		})
 		return false, nil
 	}
 
 	var clientID string
 	err = json.Unmarshal(td.Data, &clientID)
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "CLIENT_ERROR",
+			"data": map[string]string{
+				"message": "Failed to parse CLIENT_ID",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
 	pubKey, err := parseClientID(clientID)
 
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "CLIENT_ERROR",
+			"data": map[string]string{
+				"message": "Failed to parse CLIENT_ID",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
 	if pubKey == nil {
+		conn.WriteJSON(map[string]any{
+			"type": "CLIENT_ERROR",
+			"data": map[string]string{
+				"message": "Failed to parse CLIENT_ID",
+			},
+		})
 		return false, nil
 	}
 
@@ -127,6 +153,13 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 	challenge := base64.StdEncoding.EncodeToString(payload)
 
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "SERVER_ERROR",
+			"data": map[string]string{
+				"message": "Failed to generate challenge",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
@@ -137,25 +170,54 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 
 	err = conn.ReadJSON(&td)
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "SERVER_ERROR",
+			"data": map[string]string{
+				"message": "Failed to read CHALLENGE_RESPONSE",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
 	if td.Type != "CHALLENGE_RESPONSE" {
+		conn.WriteJSON(map[string]string{
+			"type": "CLIENT_ERROR",
+			"data": "Expected a CHALLENGE_RESPONSE event, but got " + td.Type + "",
+		})
 		return false, nil
 	}
 
 	var challengeResponse string
 	err = json.Unmarshal(td.Data, &challengeResponse)
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "CLIENT_ERROR",
+			"data": map[string]string{
+				"message": "Failed to parse CHALLENGE_RESPONSE",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
 	decodedChallengeResponse, err := base64.StdEncoding.DecodeString(challengeResponse)
 	if err != nil {
+		conn.WriteJSON(map[string]any{
+			"type": "CLIENT_ERROR",
+			"data": map[string]string{
+				"message": "Failed to parse CHALLENGE_RESPONSE",
+				"error":   err.Error(),
+			},
+		})
 		return false, err
 	}
 
 	if len(decodedChallengeResponse) != 64 {
+		conn.WriteJSON(map[string]string{
+			"type": "SIGNATURE_MISMATCH",
+			"data": "Expected a 64 byte signature, but got " + strconv.Itoa(len(decodedChallengeResponse)) + " bytes",
+		})
 		return false, nil
 	}
 
