@@ -122,6 +122,7 @@ export async function connect(
 
 		const listener = (event: MessageEvent<any>) => {
 			const data = JSON.parse(event.data);
+
 			switch (currentState) {
 				case "CONNECTING":
 					console.log("In connecting", data);

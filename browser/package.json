@@ -1,8 +1,11 @@
 {
 	"name": "ws-key-auth",
+	"author": "Sal Rahman <hey.to.sal@gmail.com> (http://salrahman.com)",
 	"description": "A simple WebSocket key authentication client",
 	"version": "1.0.0",
 	"type": "module",
+	"main": "dist/lib.js",
+	"types": "dist/lib.d.ts",
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc",

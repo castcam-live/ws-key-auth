@@ -96,7 +96,7 @@ async function done(ws: WebSocket) {
 	if (!input) throw new Error("DOM error");
 	if (!submit) throw new Error("DOM error");
 
-	submit.addEventListener("click", (e) => {
+	submit.addEventListener("click", () => {
 		ws.send(input.value);
 	});
 
