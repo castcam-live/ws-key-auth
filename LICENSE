@@ -1,10 +1,3 @@
-# ws-key-auth Browser Client
-
-An implementation of the ws-key-auth client specification for JavaScript environments that implement the JavaScript WebSocket API (among others as documented on [MDN Web Docs](https://developer.mozilla.org/en-US/)).
-
-## License
-
-```
 MIT License
 
 Copyright (c) 2023 Sal Rahman
@@ -26,4 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-```
