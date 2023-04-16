@@ -1,4 +1,4 @@
-module github.com/clubcabana/ws-key-auth/go
+module github.com/clubcabana/ws-key-auth/golang
 
 go 1.20
 

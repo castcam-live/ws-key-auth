@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 
-	wskeyauth "github.com/clubcabana/ws-key-auth/go"
+	wskeyauth "github.com/clubcabana/ws-key-auth/golang"
 )
 
 func main() {
