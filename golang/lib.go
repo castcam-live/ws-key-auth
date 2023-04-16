@@ -119,11 +119,11 @@ func getChallengePayload() (b []byte, err error) {
 // Handshake will perform the handshake with the client and return true if the
 // client is authenticated and false if not. If an error is returned, the
 // connection should be closed.
-func Handshake(conn *websocket.Conn) (bool, error) {
+func Handshake(conn *websocket.Conn) (bool, string, error) {
 	var td TypeData
 	err := conn.ReadJSON(&td)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	if td.Type != "CLIENT_ID" {
@@ -131,7 +131,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 			"type": "CLIENT_ERROR",
 			"data": "Expected a CLIENT_ID event, but got " + td.Type + "",
 		})
-		return false, nil
+		return false, "", nil
 	}
 
 	var clientID string
@@ -144,7 +144,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, "", err
 	}
 
 	pubKey, err := parseClientID(clientID)
@@ -157,7 +157,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, clientID, err
 	}
 
 	if pubKey == nil {
@@ -167,12 +167,12 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"message": "Failed to parse CLIENT_ID",
 			},
 		})
-		return false, nil
+		return false, clientID, nil
 	}
 
 	payload, err := getChallengePayload()
 	if err != nil {
-		return false, err
+		return false, clientID, err
 	}
 
 	challenge := base64.StdEncoding.EncodeToString(payload)
@@ -185,7 +185,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, clientID, err
 	}
 
 	conn.WriteJSON(map[string]string{
@@ -202,7 +202,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, clientID, err
 	}
 
 	if td.Type != "CHALLENGE_RESPONSE" {
@@ -210,7 +210,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 			"type": "CLIENT_ERROR",
 			"data": "Expected a CHALLENGE_RESPONSE event, but got " + td.Type + "",
 		})
-		return false, nil
+		return false, clientID, nil
 	}
 
 	var challengeResponse struct {
@@ -226,7 +226,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, clientID, err
 	}
 
 	if challengeResponse.Hash != "SHA-256" {
@@ -234,7 +234,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 			"type": "UNSUPPORTED_HASH",
 			"data": "Got hash of type " + challengeResponse.Hash + ", but the only supported hash currently is SHA-256 (more coming soon!)",
 		})
-		return false, nil
+		return false, clientID, nil
 	}
 
 	decodedChallengeResponse, err := base64.StdEncoding.DecodeString(challengeResponse.Signature)
@@ -246,7 +246,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 				"error":   err.Error(),
 			},
 		})
-		return false, err
+		return false, clientID, err
 	}
 
 	if len(decodedChallengeResponse) != 64 {
@@ -254,7 +254,7 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 			"type": "SIGNATURE_MISMATCH",
 			"data": "Expected a 64 byte signature, but got " + strconv.Itoa(len(decodedChallengeResponse)) + " bytes",
 		})
-		return false, nil
+		return false, clientID, nil
 	}
 
 	r := &big.Int{}
@@ -269,12 +269,12 @@ func Handshake(conn *websocket.Conn) (bool, error) {
 		conn.WriteJSON(map[string]string{
 			"type": "SIGNATURE_MISMATCH",
 		})
-		return false, nil
+		return false, clientID, nil
 	}
 
 	conn.WriteJSON(map[string]string{
 		"type": "SIGNATURE_MATCHES",
 	})
 
-	return true, nil
+	return true, clientID, nil
 }
