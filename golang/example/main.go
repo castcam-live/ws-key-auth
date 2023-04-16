@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 
@@ -23,7 +24,7 @@ func main() {
 		}
 		defer conn.Close()
 
-		authenticated, err := wskeyauth.Handshake(conn)
+		authenticated, clientID, err := wskeyauth.Handshake(conn)
 
 		if !authenticated || err != nil {
 			log.Println(err)
@@ -32,6 +33,8 @@ func main() {
 		}
 
 		log.Println("Authenticated")
+
+		conn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Client ID: %s", clientID)))
 
 		for {
 			_, message, err := conn.ReadMessage()
