@@ -1,4 +1,4 @@
-module github.com/clubcabana/ws-key-auth/go
+module github.com/castcam-live/ws-key-auth/go
 
 go 1.20
 
